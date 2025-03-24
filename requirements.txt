@@ -1,0 +1,4 @@
+opencv-python-headless==4.8.1.78
+numpy==1.26.3
+telegram-send==0.34
+python-telegram-bot==20.7
