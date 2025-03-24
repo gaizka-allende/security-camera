@@ -2,10 +2,10 @@
 MAX_SCREENSHOTS = 5  # Number of screenshots to keep 
 
 # Video settings
-VIDEO_LENGTH_SECONDS =  5 # Length of output video in seconds
+VIDEO_LENGTH_SECONDS = 5  # Length of output video in seconds
 FPS = 30  # Frames per second in output video
 SCREENSHOT_INTERVAL = 5  # Seconds between screenshots
-TOTAL_FRAMES = VIDEO_LENGTH_SECONDS * FPS  # Total frames needed for one video (900 frames)
+TOTAL_FRAMES = VIDEO_LENGTH_SECONDS * FPS  # Total frames needed for one video
 
 # Cleanup settings
 CLEANUP_DAYS = 1  # Number of days to keep videos before deleting 
@@ -19,7 +19,7 @@ Focus on:
 4. Any unusual activity
 Please be concise and only mention notable changes.""" 
 
-# At the start of your script
+# Display settings
 DISPLAY_WINDOW = False  # Set this to False for headless operation
 
 # Then where you have window operations
