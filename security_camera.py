@@ -8,7 +8,10 @@ import telegram_send
 import asyncio
 from asyncio import sleep
 
-HEADLESS = True  # Add this at the top of your script
+# Move these constants to the top with other constants
+HEADLESS = True
+ALERT_INTERVAL = 10  # seconds
+last_alert_time = 0  # Track when we last sent an alert
 
 # Create necessary directories if they don't exist
 if not os.path.exists('images'):
@@ -26,30 +29,20 @@ previous_frame = None
 
 # Define async function for sending telegram messages
 async def send_telegram_alert(current_time, motion_percentage, img_name, max_retries=3):
-    for attempt in range(max_retries):
-        try:
-            print(f"Attempt {attempt + 1} of {max_retries} to send Telegram alert...")
-            print("Attempting to send text message...")
-            await telegram_send.send(messages=[f"Motion detected at {current_time} - Change: {motion_percentage:.2f}%"])
-            print("Text message sent successfully")
-            
-            print(f"Attempting to send image: {img_name}")
-            await telegram_send.send(images=[img_name])
-            print("Image sent successfully")
-            
-            print("Complete alert sent to Telegram")
-            return  # Success, exit the function
-        except Exception as e:
-            print(f"Attempt {attempt + 1} failed with error: {str(e)}")
-            if attempt < max_retries - 1:
-                wait_time = (attempt + 1) * 2  # Exponential backoff
-                print(f"Waiting {wait_time} seconds before retrying...")
-                await sleep(wait_time)
-            else:
-                print(f"Failed to send Telegram alert after {max_retries} attempts")
-                print(f"Error type: {type(e)}")
-                import traceback
-                traceback.print_exc()
+    try:
+        # Open the file in binary mode
+        with open(img_name, 'rb') as image_file:
+            print(f"Sending alert with image: {img_name}")
+            await telegram_send.send(
+                messages=[f"Motion detected at {current_time} - Change: {motion_percentage:.2f}%"],
+                files=[image_file]
+            )
+            print("Alert sent successfully")
+    except Exception as e:
+        print(f"Error sending Telegram alert: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        traceback.print_exc()
 
 while True:
     # Capture frame
@@ -87,16 +80,23 @@ while True:
     
     if motion_detected:
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"\nMotion detected at {current_time} - Change: {motion_percentage:.2f}%")
         
-        # Save the frame that triggered the detection
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        img_name = os.path.join("images", f"motion_{timestamp}.png")
-        cv2.imwrite(img_name, frame)
-        print(f"Motion frame saved: {img_name}")
+        # Check if enough time has passed since last alert
+        current_timestamp = time.time()
+        if current_timestamp - last_alert_time >= ALERT_INTERVAL:
+            print(f"\nMotion detected at {current_time} - Change: {motion_percentage:.2f}%")
+            
+            # Save the frame that triggered the detection
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            img_name = os.path.join("images", f"motion_{timestamp}.png")
+            cv2.imwrite(img_name, frame)
+            print(f"Motion frame saved: {img_name}")
 
-        # Run the async function to send telegram alert
-        asyncio.run(send_telegram_alert(current_time, motion_percentage, img_name))
+            # Run the async function to send telegram alert
+            asyncio.run(send_telegram_alert(current_time, motion_percentage, img_name))
+            
+            # Update the last alert time
+            last_alert_time = current_timestamp
 
     # Update previous frame
     previous_frame = gray

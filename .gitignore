@@ -7,3 +7,4 @@ __pycache__/
 *.jpeg
 *.png
 images/
+telegram-send.conf
