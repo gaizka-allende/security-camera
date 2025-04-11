@@ -7,6 +7,13 @@ import numpy as np
 import telegram_send
 import asyncio
 from asyncio import sleep
+import logging
+import subprocess
+import threading
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Move these constants to the top with other constants
 HEADLESS = True
@@ -26,6 +33,36 @@ if not HEADLESS:
 
 # Initialize variables
 previous_frame = None
+
+# Update the path to the alarm sound
+ALARM_SOUND_PATH = os.path.join("assets", "audio", "alarm.mp3")
+
+# Add a flag to control alarm loop
+alarm_playing = False
+alarm_thread = None
+
+def play_alarm_loop():
+    global alarm_playing
+    while alarm_playing:
+        try:
+            # Play at maximum volume (--volume=65536)
+            subprocess.run(['paplay', '--volume=65536', ALARM_SOUND_PATH], check=True)
+            logger.info("Alarm sound played successfully")
+            # No delay between loops for continuous sound
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to play alarm sound: {str(e)}")
+            break
+        except Exception as e:
+            logger.error(f"Unexpected error playing sound: {str(e)}")
+            break
+
+def start_alarm():
+    global alarm_playing, alarm_thread
+    if not alarm_playing:
+        alarm_playing = True
+        alarm_thread = threading.Thread(target=play_alarm_loop)
+        alarm_thread.daemon = True  # Make thread daemon so it stops when program exits
+        alarm_thread.start()
 
 # Define async function for sending telegram messages
 async def send_telegram_alert(current_time, motion_percentage, img_name, max_retries=3):
@@ -86,6 +123,9 @@ while True:
         if current_timestamp - last_alert_time >= ALERT_INTERVAL:
             print(f"\nMotion detected at {current_time} - Change: {motion_percentage:.2f}%")
             
+            # Start alarm (will play indefinitely)
+            start_alarm()
+            
             # Save the frame that triggered the detection
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             img_name = os.path.join("images", f"motion_{timestamp}.png")
@@ -116,3 +156,11 @@ while True:
 cam.release()
 if not HEADLESS:
     cv2.destroyAllWindows()
+
+# Clean up sound system when exiting
+def cleanup():
+    pass
+
+# Register cleanup function to be called on exit
+import atexit
+atexit.register(cleanup)
